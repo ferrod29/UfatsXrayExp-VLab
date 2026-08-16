@@ -28,6 +28,7 @@ from pathlib import Path
 #: so it works regardless of the notebook's current working directory.
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-__version__ = "0.1.0"
+#: Keep in step with ``version`` in ``pyproject.toml``.
+__version__ = "0.2.0"
 
 __all__ = ["DATA_DIR", "__version__"]
