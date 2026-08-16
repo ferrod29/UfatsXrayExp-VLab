@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vlab-xray"
+version = "0.2.0"
+description = "Analysis toolkit and Praktikum notebooks for the Ultrafast X-Ray Experiments virtual lab (Exp21): static and time-resolved X-ray absorption and emission spectroscopy of Fe(II) spin-crossover complexes."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "openpyxl",
+    "xraydb",
+    "molmass",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
