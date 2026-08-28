@@ -12,3 +12,10 @@ dist/
 # own embedded outputs. Drop this line if you want them tracked for students
 # browsing the repository without running anything.
 figures/
+
+# VLab exports and everything derived from them. These are measurement data,
+# not source: data/raw/ is ~525 MB of detector text files and data/processed/
+# ~140 MB of .npy arrays rebuilt from it by scripts/build_processed_data.py.
+# Keep them local; the script and data/README.md are what get versioned.
+data/raw/
+data/processed/

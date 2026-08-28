@@ -38,9 +38,22 @@ Run each notebook top-to-bottom:
 6. `06_static_and_transient_xas_modeling.ipynb` -- static + transient Fe
    K-edge XAS modeling.
 
-Notebooks 01-04 run on synthetic stand-ins until you drop real VLab exports
-into `data/` (see [`../data/README.md`](../data/README.md)); 05-06 work on the
-measured data that ships with the repository.
+Notebooks 01-04 run on synthetic stand-ins until you supply real VLab
+exports; 05-06 work on the measured data that ships with the repository.
+
+To use a VLab session of your own, put its export folders in `data/raw/` and
+build the arrays the notebooks look for:
+
+```bash
+python scripts/build_processed_data.py
+```
+
+That writes `data/processed/*.npy`; the loaders search there first, so the
+same cells switch from synthetic to your data with no code change, and each
+prints the path it read. Both directories are git-ignored -- a session runs to
+a few hundred megabytes. See [`../data/README.md`](../data/README.md) for the
+array names and for two things the exports do not record (delay units, and a
+pair of mislabelled spectrum folders).
 
 ## Run the tests
 
@@ -61,5 +74,7 @@ sample-estimate formulas.
   [`../data/README.md`](../data/README.md)).
 - `docs/` -- this documentation: physics background (`docs/physics/`) and
   software architecture (`docs/software/`).
+- `scripts/` -- `build_processed_data.py`, which turns `data/raw/` VLab
+  exports into the `data/processed/*.npy` arrays the notebooks load.
 - `tests/` -- pytest unit tests for `src/vlab_xray/`.
 - `figures/` -- PNGs exported by the notebooks.

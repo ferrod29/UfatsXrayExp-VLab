@@ -44,11 +44,18 @@ exercises need **no network access**.
 
 Every notebook runs **out of the box** on physically-motivated *synthetic*
 stand-ins, so the analysis can be developed and tested before beamtime. To use
-**real data**, export the corresponding trace/image from the VLab (or the online
-app) and drop it into `data/` under the filename the loader expects — the
+**real data**, put your VLab session's export folders in `data/raw/` and run
+
+```bash
+python scripts/build_processed_data.py
+```
+
+which writes `data/processed/*.npy` under the names the loaders expect. The
 loaders prefer a real file whenever one is present, and return the path they
-used so you can tell which is which. See [`data/README.md`](data/README.md) for
-the full list of expected filenames per exercise, and
+used so you can tell which is which. `data/raw/` and `data/processed/` are
+git-ignored — a session runs to a few hundred megabytes, and the arrays are
+rebuilt from the raw exports rather than versioned. See
+[`data/README.md`](data/README.md) for the array names per exercise, and
 [`docs/data_dictionary.md`](docs/data_dictionary.md) for the measured data that
 ships with the repository.
 
@@ -73,6 +80,9 @@ Online app (if accessible):
 │                                     #   Bragg angles, loaders with synthetic
 │                                     #   fallback, plotting style
 ├── data/                             # measured data + your VLab exports
+│   ├── raw/                          #   your VLab session (git-ignored)
+│   └── processed/                    #   .npy arrays built from it (git-ignored)
+├── scripts/build_processed_data.py   # raw/ -> processed/
 ├── docs/                             # physics background + architecture
 ├── tests/                            # pytest unit tests
 └── figures/                          # PNGs exported by the notebooks

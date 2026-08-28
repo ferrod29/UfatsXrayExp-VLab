@@ -319,8 +319,28 @@ def sequential_populations(t, t0, taus, irf_fwhm):
 DATA_DIR = str(_PKG_DATA_DIR)
 
 
+#: Where ``scripts/build_processed_data.py`` writes the ``.npy`` arrays it
+#: builds from ``data/raw/``. Searched before ``data/`` itself, so a rebuilt
+#: export wins over anything left lying in the top-level data directory.
+PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
+
+
 def _exists(path):
     return path is not None and os.path.exists(path)
+
+
+def _candidates(name, extensions):
+    """Every path to try for *name*, processed arrays first, then ``data/``."""
+    for directory in (PROCESSED_DIR, DATA_DIR):
+        for ext in extensions:
+            yield os.path.join(directory, name + ext)
+
+
+def _read_any(path):
+    """Read a ``.npy`` array or a text table, whichever *path* is."""
+    if path.endswith(".npy"):
+        return np.load(path)
+    return _loadtxt(path, delimiter="," if path.endswith(".csv") else None)
 
 
 def _loadtxt(path, delimiter=None):
@@ -342,49 +362,80 @@ def _loadtxt(path, delimiter=None):
 def load_1d(name, gen=None, **gen_kw):
     """Load a 2-column (x, y) text file ``data/<name>`` or synthesise it.
 
-    Recognised extensions: .txt/.csv/.dat (whitespace or comma separated).
-    If the file is absent and *gen* (a callable) is given, it is called with
-    **gen_kw and its (x, y) return value is used instead.
+    Looks in ``data/processed/`` first, then ``data/``. Recognised
+    extensions: .npy (an (n, 2) array) and .txt/.csv/.dat (whitespace or
+    comma separated). If no file is found and *gen* (a callable) is given, it
+    is called with **gen_kw and its (x, y) return value is used instead.
 
     Returns ``(x, y, path)``, where *path* is the file actually read or
     ``None`` when the synthetic generator was used -- so a notebook can
     always say which of the two it is showing.
     """
-    for ext in ("", ".txt", ".csv", ".dat"):
-        path = os.path.join(DATA_DIR, name + ext)
+    for path in _candidates(name, ("", ".npy", ".txt", ".csv", ".dat")):
         if _exists(path):
-            arr = _loadtxt(path, delimiter=None if ext != ".csv" else ",")
+            arr = _read_any(path)
             return arr[:, 0], arr[:, 1], path
     if gen is not None:
         x, y = gen(**gen_kw)
         return x, y, None
-    raise FileNotFoundError(f"{name} not found in {DATA_DIR} and no generator given")
+    raise FileNotFoundError(f"{name} not found in {PROCESSED_DIR} or {DATA_DIR} "
+                            "and no generator given")
 
 
 def load_image(name, gen=None, **gen_kw):
-    """Load a 2-D image ``data/<name>`` (.npy or text) or synthesise it.
+    """Load a 2-D image (or a stack of them) or synthesise it.
 
-    Returns ``(image, path)``, with *path* ``None`` when synthetic.
+    Looks for ``data/processed/<name>`` first, then ``data/<name>``, trying
+    the .npy/.txt/.csv extensions. Returns ``(image, path)``, with *path*
+    ``None`` when synthetic.
     """
-    for ext in ("", ".npy", ".txt", ".csv"):
-        path = os.path.join(DATA_DIR, name + ext)
+    for path in _candidates(name, ("", ".npy", ".txt", ".csv")):
         if _exists(path):
-            img = np.load(path) if path.endswith(".npy") else _loadtxt(path)
-            return img, path
+            return _read_any(path), path
     if gen is not None:
         return gen(**gen_kw), None
-    raise FileNotFoundError(f"{name} not found in {DATA_DIR} and no generator given")
+    raise FileNotFoundError(f"{name} not found in {PROCESSED_DIR} or {DATA_DIR} "
+                            "and no generator given")
+
+
+def load_table(name, gen=None, **gen_kw):
+    """Load a plain n-column table (e.g. the four IPM diode signals).
+
+    Same search as :func:`load_1d` but returns the whole array rather than
+    splitting off two columns: ``(array, path)``, *path* ``None`` when the
+    generator was used.
+    """
+    for path in _candidates(name, ("", ".npy", ".txt", ".csv", ".dat")):
+        if _exists(path):
+            return _read_any(path), path
+    if gen is not None:
+        return gen(**gen_kw), None
+    raise FileNotFoundError(f"{name} not found in {PROCESSED_DIR} or {DATA_DIR} "
+                            "and no generator given")
 
 
 def load_delay_series(subdir, gen=None, **gen_kw):
     """Load a delay series from ``data/<subdir>/`` or synthesise it.
 
-    Real layout expected: one 2-column file per delay named ``<delay_fs>.txt``
-    (e.g. ``-150.txt``, ``100.txt``). Returns
-    ``(energy, delays_fs, matrix, path)`` with matrix shape
-    (n_delays, n_energy), *path* being the directory actually read or
+    Two layouts are accepted, in this order:
+
+    1. the three arrays ``data/processed/<subdir>_energy.npy``,
+       ``_delays.npy`` and ``_matrix.npy``, as written by
+       ``scripts/build_processed_data.py``;
+    2. a directory ``data/<subdir>/`` holding one 2-column file per delay
+       named ``<delay_fs>.txt`` (e.g. ``-150.txt``, ``100.txt``).
+
+    Returns ``(energy, delays_fs, matrix, path)`` with matrix shape
+    (n_delays, n_energy), *path* being the file/directory actually read or
     ``None`` when synthetic.
     """
+    bundle = [os.path.join(PROCESSED_DIR, f"{subdir}_{part}.npy")
+              for part in ("energy", "delays", "matrix")]
+    if all(_exists(p) for p in bundle):
+        energy, delays, matrix = (np.load(p) for p in bundle)
+        order = np.argsort(delays)
+        return energy, delays[order], matrix[order], bundle[2]
+
     d = os.path.join(DATA_DIR, subdir)
     files = sorted(glob.glob(os.path.join(d, "*.txt")),
                    key=lambda p: float(os.path.splitext(os.path.basename(p))[0]))
