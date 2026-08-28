@@ -7,7 +7,7 @@ src/vlab_xray/
 ├── constants.py          Physical constants & atomic masses (no internal deps)
 ├── lineshapes.py          Gaussian/Lorentzian/Voigt/erf-step peak shapes (no internal deps)
 ├── fitting.py             Generic bounded curve_fit wrapper (no internal deps)
-├── io.py                  Loaders for every file in data/ (depends on: constants via DATA_DIR)
+├── io.py                  Loaders for every file in data/ (depends on: package DATA_DIR)
 ├── xas_model.py            Static XAS model + fit routine (depends on: lineshapes)
 ├── xes_model.py            Static XES reference model (depends on: lineshapes)
 ├── kinetics.py              IRF-convolved kinetics & transient map builders (no internal deps)

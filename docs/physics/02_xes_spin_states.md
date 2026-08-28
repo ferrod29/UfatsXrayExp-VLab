@@ -2,7 +2,7 @@
 
 Code: [`src/vlab_xray/xes_model.py`](../../src/vlab_xray/xes_model.py),
 [`src/vlab_xray/lineshapes.py`](../../src/vlab_xray/lineshapes.py) ·
-Notebook: [`notebooks/03_xes_modeling.ipynb`](../../notebooks/03_xes_modeling.ipynb)
+Notebook: [`notebooks/05_xes_modeling.ipynb`](../../notebooks/05_xes_modeling.ipynb)
 
 ## 1. What XES measures
 

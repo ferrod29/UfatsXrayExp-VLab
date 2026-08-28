@@ -33,6 +33,25 @@ def test_transient_xas_map_vanishes_if_ground_equals_excited_spectrum():
     assert np.allclose(transient, 0.0)
 
 
+def test_quintet_decay_extension_is_continuous_across_the_cutoff():
+    # The slow decay is clocked from the cutoff, so the frozen cascade value
+    # carries over unchanged. Clocking it from t0 instead leaves a step of
+    # exp(-cascade_window / quintet_lifetime) -- invisible when the window is
+    # far shorter than the lifetime, catastrophic when it is not.
+    energy = np.linspace(7030, 7080, 30)
+    singlet, triplet, quintet = (np.ones_like(energy), 2 * np.ones_like(energy),
+                                 3 * np.ones_like(energy))
+    t0, cascade_window = 50.0, 1000.0
+    for lifetime in (660_000.0, 660.0):  # fs-like and (deliberately) ps-like
+        delays = np.array([t0 + cascade_window - 1e-6, t0 + cascade_window + 1e-6])
+        transient = build_transient_xes_map_with_quintet_decay(
+            singlet, triplet, quintet, delays,
+            t0=t0, i0=1, sigma=100, tau=100, quintet_lifetime=lifetime,
+            cascade_window=cascade_window,
+        )
+        assert np.allclose(transient[:, 0], transient[:, 1], rtol=1e-6)
+
+
 def test_quintet_decay_extension_matches_exponential_after_cutoff():
     energy = np.linspace(7030, 7080, 30)
     singlet = np.ones_like(energy)

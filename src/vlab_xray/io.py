@@ -119,8 +119,19 @@ def load_time_resolved_xes(path: str | Path = "Time_resolved_data.xlsx") -> pd.D
 
 
 def save_fit_params(params: dict[str, "pd.Series | list[float]"], path: str | Path) -> None:
-    """Save a ``{label: params}`` mapping (e.g. ``{"Ground State": [...], ...}``) as a pickled DataFrame."""
-    pd.DataFrame(params).T.to_pickle(_resolve(path))
+    """
+    Save a ``{label: params}`` mapping (e.g. ``{"Ground State": [...], ...}``)
+    as a pickled DataFrame, one row per label.
+
+    The parameter vectors may have different lengths -- a ground-state fit
+    typically uses one resonance Gaussian fewer than the excited state -- in
+    which case the short rows are padded with trailing ``NaN``, the layout
+    :func:`load_fit_params` expects (``.dropna()`` a row before passing it to
+    ``xas_model.xas_model``).
+    """
+    frame = pd.DataFrame({label: pd.Series(list(values), dtype=float)
+                          for label, values in params.items()}).T
+    frame.to_pickle(_resolve(path))
 
 
 def load_fit_params(path: str | Path = "FitResults_GS_ES.pkl") -> pd.DataFrame:

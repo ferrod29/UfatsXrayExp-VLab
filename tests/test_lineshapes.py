@@ -1,4 +1,7 @@
+import warnings
+
 import numpy as np
+import pytest
 
 from vlab_xray.lineshapes import cauchy, erf_step, gaussian, voigt
 
@@ -12,6 +15,18 @@ def test_gaussian_zero_sigma_is_zero_everywhere():
     # it must not raise or emit a divide-by-zero warning.
     result = gaussian(np.array([0.0, 1.0, -1.0]), 0.5, 0.0)
     assert np.all(result == 0.0)
+
+
+def test_erf_step_zero_sigma_is_an_unbroadened_step_without_warnings():
+    # fit_static_xas bounds the edge width from below by zero, so the optimizer
+    # does probe sigma=0; that must give the exact limit rather than a nan
+    # objective (which silently derails the fit).
+    x = np.array([-1.0, 0.0, 1.0])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        y = erf_step(x, 0.0, 0.5, 0.0)
+    assert np.all(np.isfinite(y))
+    assert list(y) == [-0.5, 0.0, 0.5]
 
 
 def test_erf_step_is_antisymmetric_around_edge():

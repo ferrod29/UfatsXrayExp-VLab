@@ -2,7 +2,7 @@
 
 Code: [`src/vlab_xray/xas_model.py`](../../src/vlab_xray/xas_model.py),
 [`src/vlab_xray/lineshapes.py`](../../src/vlab_xray/lineshapes.py) ·
-Notebook: [`notebooks/02_static_and_transient_xas_modeling.ipynb`](../../notebooks/02_static_and_transient_xas_modeling.ipynb)
+Notebook: [`notebooks/06_static_and_transient_xas_modeling.ipynb`](../../notebooks/06_static_and_transient_xas_modeling.ipynb)
 
 ## 1. Why X-rays absorb: the photoelectric effect and Beer-Lambert law
 
@@ -61,12 +61,20 @@ of standard deviation `sigma` is *exactly* an error function:
 step(x) convolved with Gaussian(sigma)  =  0.5 * (1 + erf((x - x0) / (sigma*sqrt(2))))
 ```
 
-`lineshapes.erf_step` implements this (dropping the constant 0.5 baseline
-into the model's `offset` term). This is why
-`Modified_Model_XAS_for_VLAB.ipynb` (see `archive/`) switched from a logistic
-sigmoid -- a convenient but ad hoc approximation to a broadened step -- to
-the erf form: the erf form is the analytically correct broadening, not an
-approximation, and is the version this project's `xas_model.py` uses.
+`lineshapes.erf_step` implements the `erf` part of this as
+`height * erf((x - x0) / (sigma*sqrt(2)))`: the additive constant is absorbed
+into the model's `offset` term, and the factor of one half into `height`.
+Two consequences worth keeping in mind when reading fitted parameters: the
+curve runs from `-height` to `+height`, so the **total edge jump is
+`2 * edge_height`**, and the fitted `edge_height` in
+`data/FitResults_GS_ES.pkl` is therefore half the jump.
+
+This erf form is also why `Modified_Model_XAS_for_VLAB.ipynb` (in the
+`archive/` folder of the older `Python_Scripts_VLab` checkout, not carried
+over here) switched away from a logistic sigmoid -- a convenient but ad hoc
+approximation to a broadened step: the erf form is the analytically correct
+broadening, not an approximation, and is the version this project's
+`xas_model.py` uses.
 
 ## 4. Ground state, excited state, and the pump-probe difference signal
 

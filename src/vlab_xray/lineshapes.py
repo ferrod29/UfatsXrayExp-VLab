@@ -70,20 +70,38 @@ def pseudovoigt(x: ArrayLike, *p: float) -> np.ndarray:
 
 def erf_step(x: ArrayLike, x0: float, height: float, sigma: float) -> np.ndarray:
     """
-    Gaussian-broadened step (edge jump) of the given ``height`` centered at
-    ``x0``.
+    Gaussian-broadened step (edge jump) centered at ``x0``, rising from
+    ``-height`` far below the edge to ``+height`` far above it.
 
-    This is the *exact* result of convolving an ideal Heaviside step with a
-    Gaussian resolution function of standard deviation ``sigma`` -- see
+    Convolving an ideal Heaviside step with a Gaussian resolution function of
+    standard deviation ``sigma`` gives *exactly*
+    ``0.5 * (1 + erf((x - x0) / (sigma * sqrt(2))))``. This function evaluates
+    the ``height * erf(...)`` part of that: the additive constant is absorbed
+    into the model's own offset term and the factor of one half into
+    ``height``, so the **total edge jump is ``2 * height``** and the fitted
+    ``edge_height`` in ``data/FitResults_GS_ES.pkl`` is half the jump. See
     ``docs/physics/01_xas_xanes.md``. Used for the absorption-edge jump in
     ``xas_model.xas_model``.
+
+    A degenerate ``sigma = 0`` (which the bounded optimizer in
+    ``xas_model.fit_static_xas`` can probe, since its lower bound is zero)
+    evaluates to the exact limit -- an unbroadened step -- rather than
+    dividing by zero and poisoning the objective with ``nan``.
     """
     x = np.asarray(x, dtype=float)
+    if sigma == 0:
+        return height * np.sign(x - x0)
     return height * special.erf((x - x0) / (sigma * np.sqrt(2)))
 
 
 def cdf(x: ArrayLike, sigma: float, x0: float, amplitude: float) -> np.ndarray:
-    """Cumulative distribution function of a Gaussian, scaled by ``amplitude``."""
+    """
+    Gaussian cumulative distribution function scaled by ``amplitude``, less
+    its ``amplitude/2`` baseline: this runs from ``-amplitude/2`` to
+    ``+amplitude/2`` rather than from 0 to ``amplitude``. Note that it is
+    therefore *not* the exact complement of :func:`ccdf`, which does carry
+    the baseline; both are kept in the form the original scripts used.
+    """
     x = np.asarray(x, dtype=float)
     return 0.5 * amplitude * special.erf((x - x0) / (sigma * np.sqrt(2)))
 
@@ -101,6 +119,12 @@ def linear(x: ArrayLike, slope: float, intercept: float) -> np.ndarray:
 
 
 def biexp(x: ArrayLike, tau: float, offset: float, amplitude: float) -> np.ndarray:
-    """Single exponential decay with time constant ``tau`` and an offset."""
+    """
+    Single exponential decay, ``amplitude * exp(-x / tau + offset)``.
+
+    Despite the historical name this is one exponential, not two, and
+    ``offset`` sits *inside* the exponent -- it scales the curve by
+    ``exp(offset)`` rather than shifting its baseline.
+    """
     x = np.asarray(x, dtype=float)
     return amplitude * np.exp(-x / tau + offset)

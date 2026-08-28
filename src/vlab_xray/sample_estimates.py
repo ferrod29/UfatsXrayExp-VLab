@@ -3,8 +3,9 @@ Physics helpers for planning a pump-probe X-ray experiment: sample
 concentration, optical density, jet speed, focal spot size, and
 excited-state fraction.
 
-These are the named building blocks behind the calculations in
-``notebooks/01_sample_estimates_solution.ipynb``. See
+These are the named building blocks behind the planning arithmetic of
+``notebooks/02_preparatory_estimates.ipynb`` (Ex. 10-19), which works the
+same physics through ``vlab_utils``. See
 ``docs/physics/04_sample_and_beam_considerations.md`` for the physical
 background of each formula.
 """
@@ -58,10 +59,14 @@ def photon_energy(wavelength_m: float) -> float:
 
 def rayleigh_focus_diameter(wavelength_m: float, focal_length_m: float, aperture_diameter_m: float) -> float:
     """
-    Diffraction-limited focus diameter [m] from the Rayleigh criterion,
-    ``d = 1.22 * lambda * f / D``.
+    Diffraction-limited focus *diameter* [m] -- the full width of the Airy
+    disc out to its first zero, ``d = 2.44 * lambda * f / D``.
+
+    The familiar ``1.22 * lambda * f / D`` is the Airy *radius*; the diameter
+    is twice that. This matches the focal spot computed in Ex. 17 of
+    ``notebooks/02_preparatory_estimates.ipynb``.
     """
-    return 1.22 * wavelength_m * focal_length_m / aperture_diameter_m
+    return 2.44 * wavelength_m * focal_length_m / aperture_diameter_m
 
 
 def molecules_in_volume(concentration_mol_per_l: float, volume_l: float) -> float:

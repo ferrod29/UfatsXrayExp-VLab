@@ -91,10 +91,14 @@ def build_transient_xas_map(
     tau: float,
 ) -> np.ndarray:
     """
-    Build a (energy x delay) transient XAS map for a simple two-state
-    (ground -> excited) system: at each delay, the spectrum is the
-    ground-state spectrum plus the excited-state population fraction times
-    the (excited - ground) difference spectrum.
+    Build a (energy x delay) transient (difference) XAS map for a simple
+    two-state (ground -> excited) system: at each delay the transient is the
+    excited-state population times the (excited - ground) difference
+    spectrum.
+
+    This is the pump-induced *change*, the quantity a pump-probe measurement
+    reports; the full spectrum at a delay is the ground-state spectrum plus
+    the corresponding column of this map.
     """
     population = excited_state_population(delays, t0, i0, sigma, tau)
     difference_spectrum = np.asarray(excited_state_spectrum) - np.asarray(ground_state_spectrum)
@@ -150,6 +154,10 @@ def build_transient_xes_map_with_quintet_decay(
     Beyond that window, the transient spectrum is frozen at its value at the
     window edge and allowed to decay back towards zero (full ground-state
     recovery) with the much longer ``quintet_lifetime``.
+
+    The slow decay is clocked from the cutoff, not from ``t0``, so the map is
+    continuous across the window edge for any ratio of ``cascade_window`` to
+    ``quintet_lifetime``.
     """
     delays = np.asarray(delays, dtype=float)
     singlet_spectrum = np.asarray(singlet_spectrum)
@@ -183,6 +191,6 @@ def build_transient_xes_map_with_quintet_decay(
             - (triplet_at_cutoff + quintet_at_cutoff) * singlet_spectrum
         )
         transient[:, late] = np.outer(
-            spectrum_at_cutoff, np.exp(-(delays[late] - t0) / quintet_lifetime)
+            spectrum_at_cutoff, np.exp(-(delays[late] - cutoff) / quintet_lifetime)
         )
     return transient

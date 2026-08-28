@@ -111,7 +111,14 @@ def delta_beta(formula, energy_ev, density=None):
     """Refractive-index decrement (delta, beta) with n = 1 - delta + i beta.
 
     Needed for the CRL focal-length estimate (Be lenses, Sec. 6.4.7).
+    Unlike :func:`mu_linear`, *density* [g/cm^3] must be given explicitly --
+    ``xraydb.xray_delta_beta`` has no density table to fall back on.
     """
+    if density is None:
+        raise ValueError(
+            f"delta_beta({formula!r}, ...) needs an explicit density [g/cm^3] "
+            "(e.g. density=1.848 for Be)."
+        )
     en = np.atleast_1d(np.asarray(energy_ev, dtype=float))
     d, b, _ = xraydb.xray_delta_beta(formula, density, en)
     if np.isscalar(energy_ev) or np.ndim(energy_ev) == 0:
@@ -253,7 +260,6 @@ def _fine_grid(t, irf_fwhm, npts=4000):
 
 def _convolve_with_irf(signal, fine, irf_fwhm):
     """Convolve a signal defined on the (uniform) *fine* grid with the IRF."""
-    dt = fine[1] - fine[0]
     kernel = irf_gaussian(fine, fine[fine.size // 2], irf_fwhm)
     kernel = kernel / kernel.sum()
     return np.convolve(signal, kernel, mode="same")
@@ -339,6 +345,10 @@ def load_1d(name, gen=None, **gen_kw):
     Recognised extensions: .txt/.csv/.dat (whitespace or comma separated).
     If the file is absent and *gen* (a callable) is given, it is called with
     **gen_kw and its (x, y) return value is used instead.
+
+    Returns ``(x, y, path)``, where *path* is the file actually read or
+    ``None`` when the synthetic generator was used -- so a notebook can
+    always say which of the two it is showing.
     """
     for ext in ("", ".txt", ".csv", ".dat"):
         path = os.path.join(DATA_DIR, name + ext)
@@ -352,7 +362,10 @@ def load_1d(name, gen=None, **gen_kw):
 
 
 def load_image(name, gen=None, **gen_kw):
-    """Load a 2-D image ``data/<name>`` (.npy or text) or synthesise it."""
+    """Load a 2-D image ``data/<name>`` (.npy or text) or synthesise it.
+
+    Returns ``(image, path)``, with *path* ``None`` when synthetic.
+    """
     for ext in ("", ".npy", ".txt", ".csv"):
         path = os.path.join(DATA_DIR, name + ext)
         if _exists(path):
@@ -367,8 +380,10 @@ def load_delay_series(subdir, gen=None, **gen_kw):
     """Load a delay series from ``data/<subdir>/`` or synthesise it.
 
     Real layout expected: one 2-column file per delay named ``<delay_fs>.txt``
-    (e.g. ``-150.txt``, ``100.txt``). Returns (energy, delays_fs, matrix)
-    with matrix shape (n_delays, n_energy).
+    (e.g. ``-150.txt``, ``100.txt``). Returns
+    ``(energy, delays_fs, matrix, path)`` with matrix shape
+    (n_delays, n_energy), *path* being the directory actually read or
+    ``None`` when synthetic.
     """
     d = os.path.join(DATA_DIR, subdir)
     files = sorted(glob.glob(os.path.join(d, "*.txt")),
@@ -533,7 +548,7 @@ class Synthetic:
     # --- Time-resolved XES ---------------------------------------------------
     @staticmethod
     def transient_map(energy=None, delays=None, irf_fwhm=80.0,
-                      tau_isc=25.0, tau_mlct=130.0, seed=0, noise=0.001):
+                      tau_mlct=25.0, tau_intermediate=130.0, seed=0, noise=0.001):
         """Time-resolved Fe K-beta *difference* map dI(E, t).
 
         Physical stand-in following Fig. 3.6/3.7: after excitation the system
@@ -566,8 +581,11 @@ class Synthetic:
         d_inter = inter - ls
         d_hs = hs - ls
         # populations: state0 (invisible MLCT) -> state1 (intermediate) -> state2 (HS)
+        # taus are the lifetimes of the successive *precursor* states, so the
+        # first entry drains the MLCT into the intermediate and the second
+        # drains the intermediate into the HS product.
         pops = sequential_populations(delays, 0.0,
-                                      [tau_isc, tau_mlct], irf_fwhm)
+                                      [tau_mlct, tau_intermediate], irf_fwhm)
         # states: 0 = MLCT (no Kb' yet, ~LS-like, invisible in difference)
         #         1 = intermediate 3T  -> d_inter
         #         2 = HS 5T2 product   -> d_hs

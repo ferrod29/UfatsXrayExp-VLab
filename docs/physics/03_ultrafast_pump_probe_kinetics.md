@@ -1,8 +1,8 @@
 # Ultrafast Pump-Probe Kinetics: IRF Convolution and the Spin-Crossover Cascade
 
 Code: [`src/vlab_xray/kinetics.py`](../../src/vlab_xray/kinetics.py) ·
-Notebooks: [`notebooks/02_static_and_transient_xas_modeling.ipynb`](../../notebooks/02_static_and_transient_xas_modeling.ipynb),
-[`notebooks/03_xes_modeling.ipynb`](../../notebooks/03_xes_modeling.ipynb)
+Notebooks: [`notebooks/06_static_and_transient_xas_modeling.ipynb`](../../notebooks/06_static_and_transient_xas_modeling.ipynb),
+[`notebooks/05_xes_modeling.ipynb`](../../notebooks/05_xes_modeling.ipynb)
 
 ## 1. The pump-probe method
 
@@ -65,8 +65,16 @@ spectra,
 spectrum(E, t) = ground_state(E) + N_excited(t) * (excited_state(E) - ground_state(E))
 ```
 
-implemented in `kinetics.build_transient_xas_map`, using the two static
-spectra fit in `xas_model` (see
+`kinetics.build_transient_xas_map` returns the pump-induced *change* -- the
+second term alone,
+
+```
+transient(E, t) = N_excited(t) * (excited_state(E) - ground_state(E))
+```
+
+which is what a pump-probe measurement actually reports; add
+`ground_state(E)` back to recover the full spectrum at a delay. It uses the
+two static spectra fit in `xas_model` (see
 [`01_xas_xanes.md`](01_xas_xanes.md)) as `ground_state`/`excited_state`.
 
 ## 4. Three-state cascade: the transient XES map
@@ -85,10 +93,11 @@ spectrum(E, t) = N_triplet(t) * triplet(E)
 i.e. the singlet ground-state population is depleted by exactly the amount
 that has moved into the triplet and quintet populations (particle-number
 conservation). This is `kinetics.build_transient_xes_map`. The parameters
-`t0, I0, sigma, tau` (IRF center/amplitude/width and the
-singlet->triplet->quintet transfer time) are obtained from an independent
-kinetics fit to the time-resolved data (not reproduced in this project; the
-resulting numbers are hardcoded where they're used).
+`I0, t0, sigma, tau` (amplitude, IRF center and width, and the
+singlet->triplet->quintet transfer time -- in that order, as
+`notebooks/05_xes_modeling.ipynb` unpacks them) are obtained from an
+independent kinetics fit to the time-resolved data (not reproduced in this
+project; the resulting numbers are hardcoded where they're used).
 
 ## 5. The quintet's own, much slower decay
 
@@ -97,15 +106,20 @@ infinitely long-lived -- valid for delays up to about a nanosecond. On
 longer timescales the quintet state itself relaxes back to the singlet
 ground state (full spin-crossover recovery), with a lifetime `tau2` far
 longer than the singlet->triplet->quintet transfer time (`660 ps` in
-`notebooks/03_xes_modeling.ipynb`, vs. the ~100 fs IRF and ~sub-ps transfer
+`notebooks/05_xes_modeling.ipynb`, vs. the ~100 fs IRF and ~sub-ps transfer
 time). `kinetics.build_transient_xes_map_with_quintet_decay` therefore
 evaluates the cascade normally up to a `cascade_window` after `t0`, then
 **freezes** the transient spectrum at its value at that cutoff and lets the
 whole thing decay back towards zero with the long lifetime:
 
 ```
-spectrum(E, t > t0 + cascade_window) = spectrum(E, t0 + cascade_window) * exp(-(t - t0)/tau2)
+cutoff = t0 + cascade_window
+spectrum(E, t > cutoff) = spectrum(E, cutoff) * exp(-(t - cutoff)/tau2)
 ```
+
+The slow decay is clocked from the `cutoff`, not from `t0`, so the two
+branches meet exactly at the window edge whatever the ratio of
+`cascade_window` to `tau2`.
 
 This is a simplification (it assumes the *shape* of the transient spectrum
 doesn't change during the quintet decay, only its overall amplitude, i.e.

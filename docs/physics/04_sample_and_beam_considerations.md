@@ -2,8 +2,8 @@
 
 Code: [`src/vlab_xray/sample_estimates.py`](../../src/vlab_xray/sample_estimates.py),
 [`src/vlab_xray/constants.py`](../../src/vlab_xray/constants.py) ·
-Notebooks: [`notebooks/01_sample_estimates_solution.ipynb`](../../notebooks/01_sample_estimates_solution.ipynb),
-[`notebooks/01_sample_estimates_exercise.ipynb`](../../notebooks/01_sample_estimates_exercise.ipynb)
+Notebook: [`notebooks/02_preparatory_estimates.ipynb`](../../notebooks/02_preparatory_estimates.ipynb)
+(Ex. 10-19, which works the same physics through `vlab_utils`)
 
 Before running a femtosecond pump-probe X-ray experiment, a set of practical
 questions need quantitative answers: how much sample is needed, how
@@ -36,13 +36,16 @@ I/I0 = exp(-mu * l)                      (X-ray transmission form)
 X-ray transmission curves (from the CXRO/Henke optical-constants database,
 https://henke.lbl.gov/optical_constants/filter2.html) for a 25&mu;m water jet
 and a fictive iron foil, in the same 7000-7200 eV window as the Fe K-edge XAS
-scan. Comparing them separates the two physical attenuation mechanisms in
-this energy range: **photoelectric absorption** dominates in iron (it *is*
-the K-edge signal being measured), while **scattering** (mostly incoherent/
-Compton at these energies for light elements) dominates the comparatively
-featureless water background -- the reason the sample needs to be thin
-enough, and concentrated enough, that the iron's edge signal isn't swamped
-by the water's flat scattering background.
+scan. **Photoelectric absorption dominates both**: at 7-7.2 keV it accounts
+for ~97% of water's total attenuation (the rest being ~2% coherent/Rayleigh
+and ~1% incoherent/Compton scattering -- Compton only takes over for light
+elements well above ~30 keV). What distinguishes the two is not the
+mechanism but the *energy dependence*: water is far above the O K-edge, so
+its attenuation is a smooth, featureless `E^-3` background, whereas iron's
+cross-section jumps at 7112 eV and carries the near-edge structure being
+measured. Comparing the curves is what shows the sample must be thin enough,
+and concentrated enough, that the dilute iron's edge step is not swamped by
+that flat water background.
 
 For the optical (UV-vis) excitation side, `sample_estimates.beer_lambert_concentration`
 inverts the optical-density form to answer "what concentration gives OD = 1
@@ -69,11 +72,13 @@ had already affected.
 The diffraction-limited laser focus diameter follows the Rayleigh criterion,
 
 ```
-d = 1.22 * lambda * f / D
+d = 2.44 * lambda * f / D
 ```
 
 (`sample_estimates.rayleigh_focus_diameter`, with `f` the focusing lens'
-focal length and `D` its aperture diameter). For a clean pump-probe
+focal length and `D` its aperture diameter). The factor is 2.44 because this
+is the *diameter* of the Airy disc out to its first zero; the more familiar
+`1.22 * lambda * f / D` is its radius. For a clean pump-probe
 measurement, the laser spot should be significantly *larger* than the X-ray
 spot: the X-ray probe then only ever samples a sub-region of the pumped
 volume where the excitation density is close to uniform, avoiding a mixture
