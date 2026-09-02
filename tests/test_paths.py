@@ -46,7 +46,22 @@ def test_loader_falls_back_to_the_generator_when_absent():
 
 
 def test_processed_dir_sits_under_the_data_dir():
-    assert Path(V.PROCESSED_DIR) == Path(vlab_xray.DATA_DIR) / "processed"
+    processed = Path(V.PROCESSED_DIR)
+    root = Path(vlab_xray.DATA_DIR) / "processed"
+    # Either data/processed/ itself, or one dated session inside it.
+    assert processed == root or processed.parent == root
+
+
+def test_sessions_sort_by_date_even_when_a_folder_name_is_yyyyddmm():
+    # 20263108 is 31 August 2026 written back to front; plain string sorting
+    # would place it after September and make it the default session.
+    order = sorted(["20260901", "20263108", "20260226"], key=V._session_date)
+    assert order == ["20260226", "20263108", "20260901"]
+
+
+def test_use_session_rejects_a_session_that_was_never_built():
+    with pytest.raises(FileNotFoundError, match="no built session"):
+        V.use_session("19000101")
 
 
 def _write_processed(tmp_path, monkeypatch, **arrays):

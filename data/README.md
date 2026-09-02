@@ -59,55 +59,81 @@ element (`None` when the synthetic generator was used).
 Energies are in eV and delays in fs throughout, matching the conventions in
 [`src/vlab_xray/vlab_utils.py`](../src/vlab_xray/vlab_utils.py).
 
-## `raw/` and `processed/` — your own VLab session
+## `raw/` and `processed/` — your own VLab sessions
 
 Both directories are **git-ignored**: they hold measurement data, not source.
-A VLab session runs to a few hundred megabytes, so it stays on your machine
-and is rebuilt from the raw exports rather than versioned.
+A session runs to a few hundred megabytes, so it stays on your machine and is
+rebuilt from the raw exports rather than versioned.
 
-Drop the VLab's export folders into `data/raw/` and run
+Each session lives in its own dated folder:
 
-```bash
-python scripts/build_processed_data.py
+```
+data/raw/20260901/...          exports straight out of the VLab
+data/processed/20260901/*.npy  the arrays built from them
 ```
 
-which writes `data/processed/*.npy` under the names the notebooks look for.
-The loaders search `data/processed/` first, then `data/`, and accept `.npy`
-as well as text, so the notebooks pick the arrays up with no further edits.
+Build them with
+
+```bash
+python scripts/build_processed_data.py            # the newest session
+python scripts/build_processed_data.py 20260901   # a specific one
+python scripts/build_processed_data.py --all      # every session
+```
+
+The loaders search the newest built session, then `data/` itself, and accept
+`.npy` as well as text, so the notebooks pick the arrays up with no edits.
+To analyse an older session instead:
+
+```python
+V.use_session("20260226")     # or set VLAB_SESSION=20260226 in the environment
+```
+
+Session folders are ordered by date, not by name — one session is named
+`20263108`, which is 31 August written `YYYYDDMM` and would otherwise sort
+after September.
+
+### Array names
 
 | Array | Shape | Exercise | Built from |
 |---|---|---|---|
-| `biu2_stack.npy` | (n, 420, 420) | 2 | `raw/full_beam/` — one frame per pulse |
-| `biu2_pink.npy` | (420, 420) | 3 | mean of `raw/full_beam/` |
-| `biu2_mono.npy` | (420, 420) | 3 | the single BIU2 frame in `raw/pink_X-ray/` |
-| `spa1_pink_shot{0,1,2}.npy`, `spa1_pink_avg.npy` | (420, 2) | 4 | `raw/monochromated_x-ray/` † |
-| `spa1_mono.npy` | (420, 2) | 5 | `raw/pink_X-ray/` † |
-| `spa1_*_unattenuated.npy` | (420, 2) | — | the one ~100× brighter shot in each set |
-| `ipm.npy`, `ipm_scan_position.npy` | (n, 4), (n,) | 7 | `raw/IPM *.txt` |
-| `ipm_biu2_headers.npy` | (n, 4) | 7 | the `Readings from IPM` header of each `full_beam` frame |
-| `xray_eye.npy` | (420, 420) | 9 | `raw/laser_off/X-RayEye *.txt` — the focused spot |
-| `xray_eye_unfocused_stack.npy` | (n, 420, 420) | 9 | `raw/x-ray-eye/` — same detector before focusing |
-| `biu3_focus_{tight,wide}_stack.npy` | (n, 420, 420) | 9 | `raw/focused_beam/` and its `New folder/` — two CRL settings |
-| `jet_scan.npy` | (420, 2) | 22 | `raw/laser_off/LPD *.txt` |
-| `kb_ground.npy` | (420, 2) | 23 | the laser-off von Hamos acquisition carrying signal |
-| `kb_laser_off_null.npy` | (420, 2) | 23 | the laser-off acquisition that integrates to ~0 (null check) |
-| `transients_{energy,delays,matrix}.npy` | (420,), (n,), (n, 420) | 29, 32–35 | `raw/laser_on/<delay>/`, repeats averaged |
+| `biu2_stack.npy` | (n, 420, 420) | 2 | one imager frame per pulse |
+| `biu2_pink.npy`, `biu2_mono.npy` | (420, 420) | 3 | a full-beam and a monochromatised frame |
+| `spa1_pink_shot{0,1,2}.npy`, `spa1_pink_avg.npy` | (420, 2) | 4 | the SpA1 pink shots |
+| `spa1_mono.npy` | (420, 2) | 5 | the SpA1 monochromatic shots |
+| `spa1_*_unattenuated.npy` | (420, 2) | — | any ~100× brighter shot in a set |
+| `ipm.npy`, `ipm_mono.npy`, `ipm_scan_position.npy` | (n, 4), (n,) | 7 | the IPM export, else the imager frame headers |
+| `xray_eye.npy` | (420, 420) | 9 | the focused spot at the sample |
+| `xray_eye_unfocused_stack.npy` | (n, 420, 420) | 9 | the same detector before focusing |
+| `biu3_focus_{tight,wide}_stack.npy` | (n, 420, 420) | 9 | BIU3 at two CRL settings |
+| `tad_{pink,mono}.npy` | (420, 2) | — | the arrival-time monitor's step edge |
+| `jet_scan.npy` | (420, 2) | 22 | the LPD scan across the jet |
+| `kb_ground.npy`, `kb_laser_off_null.npy` | (420, 2) | 23 | laser-off von Hamos: the one with signal, and the null |
+| `transients_{energy,delays,matrix}.npy` | (420,), (n,), (n, 420) | 29, 32–35 | the delay scan, repeats averaged |
 | `transients_{sem,n_repeats}.npy` | (n, 420), (n,) | 29, 32–35 | spread across those repeats |
 
-† **The two spectrum folders are swapped.** Measured from the files: the set
-in `raw/pink_X-ray/` is narrow (ΔE/E = 3.2e-4), identical shot to shot
-(correlation 1.000) and dim; the set in `raw/monochromated_x-ray/` is broad
-(ΔE/E = 2.4–4.5e-3), spiky and varies shot to shot (correlation 0.52), and is
-39× brighter. A monochromator can neither broaden its input nor add flux, so
-the second set is the pink/SASE beam and the first is the monochromatised one.
-The build script names its outputs by what the data are, not by the folder.
+Not every session holds every measurement; the build prints what it skipped,
+and the notebooks fall back to synthetic stand-ins for the rest.
+
+### What the build works out for itself
+
+**Which folder is the pink beam.** Never taken from the folder name. A
+monochromator can neither broaden its input nor add flux, so the pink beam is
+the set that is spectrally wider, varies shot to shot, and carries more
+photons; `classify_beam` checks all three and prints what it found. This
+matters: in the **20260226** session the two folders are *swapped* — the set
+in `pink_X-ray/` is narrow (ΔE/E = 3.2e-4), identical shot to shot
+(correlation 1.000) and dim, while `monochromated_x-ray/` is broad
+(2.4–4.5e-3), spiky (0.52) and 39× brighter. The **20260901** session's labels
+are correct, and the build says so.
+
+**A changed spectrometer range.** If the delay scan switched range part-way
+through, the delays sit on different energy grids; they are interpolated onto
+the overlap and the build reports it.
 
 Two things the exports do not record, so the script assumes them — change them
 at the top of `scripts/build_processed_data.py` if your session differed:
 
-- **Delay units.** The `raw/laser_on/<delay>/` folder names carry no unit and
-  are read as femtoseconds (`DELAY_UNIT_FS`). The rise shape supports this:
-  noise before ≈ −180, half maximum near +80, plateau by ≈ +300.
-- **Attenuator outliers.** One acquisition in each SpA1 set integrates ~100×
-  higher than the rest and is kept aside rather than averaged in
-  (`OUTLIER_FACTOR`).
+- **Delay units.** Delay folder names carry no unit and are read as
+  femtoseconds (`DELAY_UNIT_FS`).
+- **Attenuator outliers.** An acquisition integrating ~100× above the rest of
+  its set is kept aside rather than averaged in (`OUTLIER_FACTOR`).

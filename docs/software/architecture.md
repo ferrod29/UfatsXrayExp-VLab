@@ -61,10 +61,10 @@ data/cxro_*.txt, data/20140203_FeBPY_spectrum_Emilia.txt
         (notebook 02 computes the same quantities through vlab_utils, which
          reads the CXRO tabulation from xraydb rather than from data/)
 
-your VLab session in data/raw/   (git-ignored)
+your VLab sessions in data/raw/<session>/    (git-ignored)
         |  scripts/build_processed_data.py
         v
-data/processed/*.npy             (git-ignored)
+data/processed/<session>/*.npy               (git-ignored)
         |  vlab_utils.load_1d / load_image / load_table / load_delay_series
         v                        (synthetic fallback when absent)
 notebooks 01-04  -->  beam alignment, planning estimates, acquisition, analysis

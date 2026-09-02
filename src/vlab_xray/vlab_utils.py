@@ -253,9 +253,16 @@ def irf_gaussian(t, t0, irf_fwhm):
 
 
 def _fine_grid(t, irf_fwhm, npts=4000):
-    """Uniform fine grid spanning t padded by +-6 sigma of the IRF."""
+    """Uniform fine grid spanning t padded by +-6 sigma of the IRF.
+
+    The grid always brackets 0, even when every delay in *t* sits on one side
+    of it: :func:`sequential_populations` injects the excited population at
+    ``fine == 0``, so a grid that misses zero has nowhere to put it. A delay
+    axis that never reaches time zero still gives a poorly constrained fit,
+    but it no longer fails outright.
+    """
     pad = 6 * irf_fwhm / SIG2FWHM
-    return np.linspace(np.min(t) - pad, np.max(t) + pad, npts)
+    return np.linspace(min(np.min(t) - pad, -pad), max(np.max(t) + pad, pad), npts)
 
 
 def _convolve_with_irf(signal, fine, irf_fwhm):
@@ -319,10 +326,80 @@ def sequential_populations(t, t0, taus, irf_fwhm):
 DATA_DIR = str(_PKG_DATA_DIR)
 
 
-#: Where ``scripts/build_processed_data.py`` writes the ``.npy`` arrays it
-#: builds from ``data/raw/``. Searched before ``data/`` itself, so a rebuilt
-#: export wins over anything left lying in the top-level data directory.
-PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
+#: Root of the per-session output of ``scripts/build_processed_data.py``.
+PROCESSED_ROOT = os.path.join(DATA_DIR, "processed")
+
+
+def _session_date(name):
+    """Sort key for a dated session folder.
+
+    Folders are normally ``YYYYMMDD``, but at least one session was written
+    ``YYYYDDMM`` (``20263108`` for 31 August 2026), which plain string sorting
+    puts after September. Try the standard order, fall back to the swapped
+    one, and leave anything unparseable to sort by name after the dates.
+    """
+    if len(name) == 8 and name.isdigit():
+        year, a, b = int(name[:4]), int(name[4:6]), int(name[6:])
+        for month, day in ((a, b), (b, a)):
+            if 1 <= month <= 12 and 1 <= day <= 31:
+                return (0, year, month, day, name)
+    return (1, 0, 0, 0, name)
+
+
+def available_sessions():
+    """Dated session folders already built under ``data/processed/``, oldest first."""
+    if not os.path.isdir(PROCESSED_ROOT):
+        return []
+    return sorted((d for d in os.listdir(PROCESSED_ROOT)
+                   if os.path.isdir(os.path.join(PROCESSED_ROOT, d))),
+                  key=_session_date)
+
+
+def _default_processed_dir():
+    """The session the loaders read unless told otherwise.
+
+    ``$VLAB_SESSION`` wins if set; otherwise the newest dated folder; failing
+    that ``data/processed/`` itself, which is where a single unnamed session
+    would have been built.
+    """
+    requested = os.environ.get("VLAB_SESSION")
+    if requested:
+        return os.path.join(PROCESSED_ROOT, requested)
+    sessions = available_sessions()
+    if sessions:
+        return os.path.join(PROCESSED_ROOT, sessions[-1])
+    return PROCESSED_ROOT
+
+
+#: Directory the loaders search before ``data/`` itself, so a rebuilt export
+#: wins over anything left lying in the top-level data directory.
+PROCESSED_DIR = _default_processed_dir()
+
+#: Which session :data:`PROCESSED_DIR` points at, or ``None`` for the
+#: unnamed top-level ``data/processed/``.
+SESSION = os.path.basename(PROCESSED_DIR) if PROCESSED_DIR != PROCESSED_ROOT else None
+
+
+def use_session(name):
+    """Point the loaders at the ``data/processed/<name>/`` session.
+
+    Returns the directory now in use. ``use_session(None)`` restores the
+    default (``$VLAB_SESSION``, else the newest session built).
+    """
+    global PROCESSED_DIR, SESSION
+    if name is None:
+        PROCESSED_DIR = _default_processed_dir()
+    else:
+        candidate = os.path.join(PROCESSED_ROOT, name)
+        if not os.path.isdir(candidate):
+            raise FileNotFoundError(
+                f"no built session {name!r} in {PROCESSED_ROOT}; "
+                f"available: {', '.join(available_sessions()) or 'none'}. "
+                "Run scripts/build_processed_data.py first."
+            )
+        PROCESSED_DIR = candidate
+    SESSION = os.path.basename(PROCESSED_DIR) if PROCESSED_DIR != PROCESSED_ROOT else None
+    return PROCESSED_DIR
 
 
 def _exists(path):

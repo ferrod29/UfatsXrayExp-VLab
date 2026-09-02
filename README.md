@@ -44,13 +44,17 @@ exercises need **no network access**.
 
 Every notebook runs **out of the box** on physically-motivated *synthetic*
 stand-ins, so the analysis can be developed and tested before beamtime. To use
-**real data**, put your VLab session's export folders in `data/raw/` and run
+**real data**, put each VLab session's export folders in its own dated folder
+under `data/raw/` (e.g. `data/raw/20260901/`) and run
 
 ```bash
-python scripts/build_processed_data.py
+python scripts/build_processed_data.py            # newest session
+python scripts/build_processed_data.py --all      # every session
 ```
 
-which writes `data/processed/*.npy` under the names the loaders expect. The
+which writes `data/processed/<session>/*.npy` under the names the loaders
+expect. The loaders read the newest session; `V.use_session("20260226")` or
+`VLAB_SESSION=20260226` picks another. The
 loaders prefer a real file whenever one is present, and return the path they
 used so you can tell which is which. `data/raw/` and `data/processed/` are
 git-ignored — a session runs to a few hundred megabytes, and the arrays are
@@ -80,8 +84,8 @@ Online app (if accessible):
 │                                     #   Bragg angles, loaders with synthetic
 │                                     #   fallback, plotting style
 ├── data/                             # measured data + your VLab exports
-│   ├── raw/                          #   your VLab session (git-ignored)
-│   └── processed/                    #   .npy arrays built from it (git-ignored)
+│   ├── raw/<session>/                #   your VLab sessions (git-ignored)
+│   └── processed/<session>/          #   .npy arrays built from them (git-ignored)
 ├── scripts/build_processed_data.py   # raw/ -> processed/
 ├── docs/                             # physics background + architecture
 ├── tests/                            # pytest unit tests

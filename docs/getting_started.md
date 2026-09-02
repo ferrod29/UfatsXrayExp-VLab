@@ -41,19 +41,28 @@ Run each notebook top-to-bottom:
 Notebooks 01-04 run on synthetic stand-ins until you supply real VLab
 exports; 05-06 work on the measured data that ships with the repository.
 
-To use a VLab session of your own, put its export folders in `data/raw/` and
-build the arrays the notebooks look for:
+To use VLab sessions of your own, put each one's export folders in a dated
+folder under `data/raw/` (e.g. `data/raw/20260901/`) and build the arrays the
+notebooks look for:
 
 ```bash
-python scripts/build_processed_data.py
+python scripts/build_processed_data.py            # newest session
+python scripts/build_processed_data.py 20260901   # a specific one
+python scripts/build_processed_data.py --all      # every session
 ```
 
-That writes `data/processed/*.npy`; the loaders search there first, so the
-same cells switch from synthetic to your data with no code change, and each
-prints the path it read. Both directories are git-ignored -- a session runs to
-a few hundred megabytes. See [`../data/README.md`](../data/README.md) for the
-array names and for two things the exports do not record (delay units, and a
-pair of mislabelled spectrum folders).
+That writes `data/processed/<session>/*.npy`; the loaders search the newest
+session first, so the same cells switch from synthetic to your data with no
+code change, and each prints the path it read. To analyse an older session,
+call `V.use_session("20260226")` in the notebook or set
+`VLAB_SESSION=20260226` in the environment.
+
+Both directories are git-ignored -- a session runs to a few hundred megabytes.
+Not every session holds every measurement, and the notebooks say which
+exercises are running on real data and which fell back to synthetic. See
+[`../data/README.md`](../data/README.md) for the array names, for what the
+build works out for itself (including a session whose pink/mono folders are
+swapped), and for the two things the exports do not record.
 
 ## Run the tests
 
