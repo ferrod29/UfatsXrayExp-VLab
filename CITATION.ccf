@@ -6,4 +6,8 @@ authors:
     orcid: https://orcid.org/0000-0003-3351-2881
 title: "Analysis Tools for UfatsXrayExp-VLab"
 version: 1.0.1
-date-released: 20261-09-10
+date-released: 2026-09-10
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.1234
+url: "https://github.com/ferrod29/UfatsXrayExp-VLab/"
